@@ -1,0 +1,14 @@
+{
+    "name": "SplashGames.Internal.UGPM.Editor",
+    "rootNamespace": "SplashGames.Internal.UGPM",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

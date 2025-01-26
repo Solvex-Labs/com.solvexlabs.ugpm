@@ -1,15 +1,18 @@
 {
-  "name": "com.splashgames.template",
-  "version": "1.0.0",
-  "displayName": "Template",
-  "description": "Template description",
-  "unity": "2022.3",
-  "documentationUrl": "https://example.com/",
-  "licensesUrl": "https://example.com/licensing.html",
-  "dependencies": { },
-  "author": {
-        "email": "exemple@splashgames.app",
-        "name": "Name Surname",
-        "url": "https://google.com"
-    }
+    "name": "com.splashgames.ugpm",
+    "version": "1.0.0",
+    "displayName": "Unity Git Package Manager",
+    "description": "Unity Git Package Manager is a tool for managing custom Unity packages hosted in Git repositories. UGPM provides an intuitive interface for browsing available repositories, checking compatibility, and automatically importing them into your Unity project.",
+    "unity": "2022.3",
+    "documentationUrl": "https://github.com/splash-games-studio/unity-gpm/?tab=readme-ov-file",
+    "licensesUrl": "https://github.com/splash-games-studio/unity-gpm/?tab=MIT-1-ov-file",
+    "dependencies": {
+        "com.unity.nuget.newtonsoft-json": "3.2.0"
+    },
+    "author": {
+        "email": "artemsvobodin@splashgames.app",
+        "name": "Artem Svobodin",
+        "url": "https://github.com/SvobodinF"
+    },
+    "iconPath": "Resources/packageIcon.png"
 }
