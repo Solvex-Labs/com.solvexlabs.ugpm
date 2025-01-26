@@ -1,0 +1,54 @@
+name: Create Package Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Запуск при пуше тегов
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write  # Даёт доступ к созданию релизов
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Загружаем всю историю для корректной работы с Git
+
+      - name: Extract package name and version
+        run: |
+          PACKAGE_NAME=${GITHUB_REPOSITORY##*/}
+          VERSION=${GITHUB_REF#refs/tags/}
+          ARCHIVE_NAME="${PACKAGE_NAME}-${VERSION}"
+          echo "PACKAGE_PATH=Packages/$PACKAGE_NAME" >> $GITHUB_ENV
+          echo "ARCHIVE_NAME=$ARCHIVE_NAME" >> $GITHUB_ENV
+          echo "RELEASE_NAME=Release $VERSION" >> $GITHUB_ENV
+
+      - name: Prepare package folder
+        run: |
+          mkdir -p "release/$ARCHIVE_NAME"
+          cp -r $PACKAGE_PATH/* "release/$ARCHIVE_NAME/"
+
+      - name: Create ZIP and TAR.GZ archives
+        run: |
+          cd release
+          zip -r "../${ARCHIVE_NAME}.zip" "$ARCHIVE_NAME"
+          tar -czvf "../${ARCHIVE_NAME}.tar.gz" "$ARCHIVE_NAME"
+          cd ..
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ env.ARCHIVE_NAME }}.zip
+            ${{ env.ARCHIVE_NAME }}.tar.gz
+          tag_name: ${{ github.ref_name }}
+          name: ${{ env.RELEASE_NAME }}
+          body: "Custom package release for version ${{ github.ref_name }}"
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Используем встроенный токен GitHub
