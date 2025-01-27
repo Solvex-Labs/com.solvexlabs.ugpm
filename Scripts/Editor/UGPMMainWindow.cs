@@ -66,7 +66,8 @@ namespace SplashGames.Internal.UGPM
         {
             EditorGUILayout.BeginHorizontal();
 
-            float leftPanelWidth = _selectedRepo != null ? CardWidth * MinColumsAmount + Padding : MinWindowSize; // Учитываем отступы
+            bool canPreviewRepo = _selectedRepo != null && _selectedRepo.GetVersionInfo() != null;
+            float leftPanelWidth = canPreviewRepo ? CardWidth * MinColumsAmount + Padding : MinWindowSize; // Учитываем отступы
             int columnAmount = (int)(leftPanelWidth / CardWidth);
             // 🎯 Левая панель (Источники + Список репозиториев)
             EditorGUILayout.BeginVertical(GUILayout.Width(leftPanelWidth));
@@ -117,22 +118,14 @@ namespace SplashGames.Internal.UGPM
             EditorGUILayout.EndScrollView();
             EditorGUILayout.EndVertical(); // Закрытие левой панели
 
-            // 🎯 Правая панель (Детали репозитория)
-           
-
-            if (_selectedRepo != null)
+            if (canPreviewRepo)
             {
                 EditorGUILayout.BeginVertical(GUILayout.ExpandWidth(true));
                 DrawRepositoryDetails();
-                EditorGUILayout.EndVertical(); // Закрытие правой панели
+                EditorGUILayout.EndVertical();
             }
-            else
-            {
-                //GUILayout.Label("Select a repository to view details", EditorStyles.helpBox);
-            }
-
             
-            EditorGUILayout.EndHorizontal(); // Закрытие главного `BeginHorizontal()`
+            EditorGUILayout.EndHorizontal();
         }
 
         private enum RepositoryDetailTab
@@ -177,7 +170,7 @@ namespace SplashGames.Internal.UGPM
                 normal = { textColor = Color.white },
                 alignment = TextAnchor.MiddleLeft
             };
-            GUILayout.Label(_selectedRepo.Name, titleStyle);
+            GUILayout.Label(_selectedRepo.GetDisplayName(), titleStyle);
 
             if (info != null)
             {
@@ -703,7 +696,7 @@ namespace SplashGames.Internal.UGPM
             }
 
             // Рисуем текст и элементы внутри карточки
-            GUI.Label(new Rect(lastRect.x + 10, lastRect.y + 10, width - 20, 20), repo.Name, EditorStyles.boldLabel);
+            GUI.Label(new Rect(lastRect.x + 10, lastRect.y + 10, width - 20, 20), repo.GetDisplayName(), EditorStyles.boldLabel);
             GUI.DrawTexture(new Rect(lastRect.x + 10, lastRect.y + 40, width - 20, 100), repo.Icon, ScaleMode.ScaleToFit);
             GUI.Label(new Rect(lastRect.x + 10, lastRect.y + 150, width - 20, 20), $"Stars: {repo.Stars}");
             GUI.Label(new Rect(lastRect.x + 10, lastRect.y + 170, width - 20, 20), $"Updated: {repo.UpdatedAt}");
@@ -741,10 +734,11 @@ namespace SplashGames.Internal.UGPM
         public class RepositoryInfo
         {
             public string Owner { get; set; }               // Владелец репозитория (юзер или организация)
-            public string Name { get; set; }                // Название репозитория
             public int Stars { get; set; }                  // Количество звезд
             public string UpdatedAt { get; set; }           // Дата последнего обновления
             public string CloneUrl { get; set; }            // URL клонирования репозитория
+
+            private readonly string _name;
 
             public readonly Texture2D Icon;
             public IReadOnlyList<VersionInfo> Versions { get; private set; }
@@ -755,7 +749,7 @@ namespace SplashGames.Internal.UGPM
                 List<VersionInfo> versions, bool isExist)
             {
                 Owner = owner;
-                Name = name;
+                _name = name;
                 Stars = stars;
                 UpdatedAt = updatedAt;
                 CloneUrl = cloneUrl;
@@ -765,7 +759,15 @@ namespace SplashGames.Internal.UGPM
             }
 
             public bool HasUnityPackage => Versions.Count > 0;
-            public string ChangelogUrl => HasUnityPackage ? $"https://github.com/{Owner}/{Name}/releases" : null;
+            public string ChangelogUrl => HasUnityPackage ? $"https://github.com/{Owner}/{_name}/releases" : null;
+
+            public string GetDisplayName()
+            {
+                if (HasUnityPackage)
+                    return GetVersionInfo().package.displayName;
+
+                return _name;
+            }
 
             public VersionInfo GetVersionInfo()
             {
