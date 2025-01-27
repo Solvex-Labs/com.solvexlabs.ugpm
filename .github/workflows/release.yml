@@ -22,12 +22,7 @@ jobs:
         run: |
           VERSION=${GITHUB_REF#refs/tags/}
           echo "ARCHIVE_NAME=release-$VERSION" >> $GITHUB_ENV
-          echo "RELEASE_NAME=Release $VERSION" >> $GITHUB_ENV
-
-      - name: Create ZIP and TAR.GZ archives
-        run: |
-          zip -r "${ARCHIVE_NAME}.zip" ./*
-          tar -czvf "${ARCHIVE_NAME}.tar.gz" ./*
+          echo "RELEASE_NAME=$VERSION" >> $GITHUB_ENV
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
