@@ -12,8 +12,6 @@ namespace SplashGames.Internal.UGPM
 {
     public class UGPMMainWindow : EditorWindow
     {
-        private const string PackageFileName = "unity-git-package.json";
-
         private GitHubProvider _gitHubProvider;
         private PackageManagerService _packageManagerService;
 
@@ -30,6 +28,8 @@ namespace SplashGames.Internal.UGPM
         private const int CardWidth = 220;  // Фиксированная ширина карточки
         private const int MinColumsAmount = 3;      // Количество колонок
         private const int Padding = 35;     // Внутренний отступ
+
+        private bool _isHideInvalid;
 
         [MenuItem("Tools/Unity Git Package Manager")]
         public static void ShowWindow()
@@ -84,6 +84,11 @@ namespace SplashGames.Internal.UGPM
                     _selectedSource = _gitHubProvider.Sources[selectedIndex];
                     _selectedRepo = null;
                     FetchRepositories();
+                }
+
+                if (GUILayout.Button(_isHideInvalid ? "S" : "H", GUILayout.Width(20)))
+                {
+                    _isHideInvalid = !_isHideInvalid;
                 }
             }
             else
@@ -148,6 +153,14 @@ namespace SplashGames.Internal.UGPM
                 return;
             }
 
+            VersionInfo info = _selectedRepo.GetVersionInfo();
+
+            if (info == null)
+            {
+                GUILayout.Label("No released versions.", EditorStyles.helpBox);
+                return;
+            }
+
             EditorGUILayout.BeginVertical("box", GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
 
             // 🔹 Верхняя секция с иконкой и названием
@@ -166,10 +179,9 @@ namespace SplashGames.Internal.UGPM
             };
             GUILayout.Label(_selectedRepo.Name, titleStyle);
 
-            VersionInfo info = _selectedRepo.GetVersionInfo();
             if (info != null)
             {
-                GUILayout.Label($"Version: {info.Version}", EditorStyles.miniLabel);
+                GUILayout.Label($"Version: {info.package.version}", EditorStyles.miniLabel);
             }
             
             GUILayout.Label($"Package ID: {_selectedRepo.CloneUrl}", EditorStyles.miniLabel);
@@ -181,9 +193,9 @@ namespace SplashGames.Internal.UGPM
 
             // 🔹 Верхние кнопки (Documentation, Changelog, Licenses)
             EditorGUILayout.BeginHorizontal();
-            DrawLinkButton("Documentation", _selectedRepo.PackageInfo?.DocumentationUrl);
+            DrawLinkButton("Documentation", info.package.documentationUrl);
             DrawLinkButton("Changelog", _selectedRepo.ChangelogUrl);
-            DrawLinkButton("License", _selectedRepo.PackageInfo?.LicenseUrl);
+            DrawLinkButton("License", info.package.licensesUrl);
             EditorGUILayout.EndHorizontal();
 
             // 🔹 Горизонтальная линия
@@ -214,17 +226,14 @@ namespace SplashGames.Internal.UGPM
                 {
                     if (GUILayout.Button("Remove", GUILayout.Height(30)))
                     {
-                        string bundleId = _packageManagerService.GetPackageBundle(_selectedRepo.Name);
-
-                        if (bundleId != null)
-                            _packageManagerService.RemovePackage(bundleId, Close);
+                        //_packageManagerService.RemovePackage(_selectedRepo.GetVersionInfo().package.name, Close);
                     }
                 }
                 else
                 {
                     if (GUILayout.Button("Import", GUILayout.Height(30)))
                     {
-                        _packageManagerService.ImportGitPackage(_selectedRepo.PackageInfo?.GitPackageUrl, Close);
+                        //_packageManagerService.ImportGitPackage(_selectedRepo.PackageInfo?.GitPackageUrl, Close);
                     }
                 }
                 
@@ -263,7 +272,7 @@ namespace SplashGames.Internal.UGPM
             {
                 case RepositoryDetailTab.Description:
                     GUILayout.Label("Description:", EditorStyles.boldLabel);
-                    GUILayout.Label(_selectedRepo.Description ?? "No description available", EditorStyles.wordWrappedLabel);
+                    GUILayout.Label(_selectedRepo.GetVersionInfo().package.description ?? "No description available", EditorStyles.wordWrappedLabel);
                     break;
 
                 case RepositoryDetailTab.VersionHistory:
@@ -281,7 +290,8 @@ namespace SplashGames.Internal.UGPM
 
                 case RepositoryDetailTab.Dependencies:
                     GUILayout.Label("Dependencies:", EditorStyles.boldLabel);
-                    if (_selectedRepo.PackageInfo?.GitDependencies != null && _selectedRepo.PackageInfo.GitDependencies.Length > 0)
+                    GUILayout.Label("No dependencies found.", EditorStyles.wordWrappedLabel);
+                    /*if (_selectedRepo.PackageInfo?.GitDependencies != null && _selectedRepo.PackageInfo.GitDependencies.Length > 0)
                     {
                         foreach (var dependency in _selectedRepo.PackageInfo.GitDependencies)
                         {
@@ -291,7 +301,7 @@ namespace SplashGames.Internal.UGPM
                     else
                     {
                         GUILayout.Label("No dependencies found.", EditorStyles.wordWrappedLabel);
-                    }
+                    }*/
                     break;
 
                 default:
@@ -324,68 +334,65 @@ namespace SplashGames.Internal.UGPM
             EditorGUILayout.EndScrollView(); // Закрываем ScrollView
         }
 
-        private void DrawVersionCard(VersionInfo version)
+        private void DrawVersionCard(VersionInfo info)
         {
             EditorGUILayout.BeginVertical("box");
 
             // Кнопка переключения состояния (свернуть/развернуть)
             EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button(version.IsExpanded ? "▼" : "▶", GUILayout.Width(20)))
+            if (GUILayout.Button(info.IsExpanded ? "▼" : "▶", GUILayout.Width(20)))
             {
-                version.IsExpanded = !version.IsExpanded;
+                info.IsExpanded = !info.IsExpanded;
             }
 
+            string version = info.package.version;
             // Версия
-            GUILayout.Label(version.Version, EditorStyles.boldLabel);
+            GUILayout.Label(version, EditorStyles.boldLabel);
 
             // Определяем тип версии
-            if (version.IsLatest)
-            {
-                DrawVersionType("Latest", Color.green);
-            }
-            if (version.IsRecommended)
+            if (info.IsLatest)
             {
                 DrawVersionType("Recommended", Color.green);
             }
-            if (version.IsPrerelease)
+            if (info.IsPrerelease)
             {
                 DrawVersionType("Pre-release", Color.yellow);
             }
 
             GUILayout.FlexibleSpace();
-            GUILayout.Label(version.ReleaseDate, EditorStyles.miniLabel);
+            GUILayout.Label(info.ReleaseDate, EditorStyles.miniLabel);
             EditorGUILayout.EndHorizontal();
 
             // Если карточка развернута, рисуем дополнительную информацию
-            if (version.IsExpanded)
+            if (info.IsExpanded)
             {
                 EditorGUILayout.Space();
                 EditorGUILayout.LabelField("Changelog:", EditorStyles.boldLabel);
-                EditorGUILayout.LabelField(version.Changelog, EditorStyles.wordWrappedLabel);
+                EditorGUILayout.LabelField(info.Changelog, EditorStyles.wordWrappedLabel);
 
-                if (!string.IsNullOrEmpty(version.ChangelogUrl))
+                if (!string.IsNullOrEmpty(info.ChangelogUrl))
                 {
                     if (GUILayout.Button("See full changelog", EditorStyles.linkLabel))
                     {
-                        Application.OpenURL(version.ChangelogUrl);
+                        Application.OpenURL(info.ChangelogUrl);
                     }
                 }
 
                 EditorGUILayout.Space();
                 EditorGUILayout.BeginHorizontal();
 
-                if (version.IsInstalled)
+                if (info.IsInstalled)
                 {
                     if (GUILayout.Button("Remove", GUILayout.Width(80)))
                     {
-                        Debug.Log($"Removing {version.Version}");
+                        Debug.Log($"Removing {version}");
                     }
                 }
                 else
                 {
                     if (GUILayout.Button("Update", GUILayout.Width(80)))
                     {
-                        Debug.Log($"Updating to {version.Version}");
+                        Debug.Log($"Updating to {version}");
                     }
                 }
 
@@ -459,7 +466,7 @@ namespace SplashGames.Internal.UGPM
         }
 
         public async Task<List<VersionInfo>> FetchReleasesAsync(string owner, string repo,
-            string accessToken, string recommendedVersion)
+            string accessToken)
         {
             string url = $"https://api.github.com/repos/{owner}/{repo}/releases";
             long? latestReleaseId = await GetLatestReleaseIdAsync(owner, repo, accessToken);
@@ -486,19 +493,18 @@ namespace SplashGames.Internal.UGPM
                     long releaseId = item["id"]?.ToObject<long>() ?? 0;
                     string version = NormalizeVersion(item["tag_name"]?.ToString());
 
+                    PackageInfo package = await FetchPackageInfo(owner, repo, version);
+
                     bool isLatest = latestReleaseId.HasValue && releaseId == latestReleaseId.Value;
                     bool isInstalled = false;
-                    bool isRecommended = string.IsNullOrEmpty(recommendedVersion) == false && recommendedVersion == version;
-                    Debug.Log($"{recommendedVersion} / {version} = {isRecommended}");
 
                     versions.Add(new VersionInfo(
-                        version,
+                        package,
                         item["published_at"]?.ToString(),
                         item["body"]?.ToString(),
                         item["html_url"]?.ToString(),
                         isInstalled, // IsInstalled (нужно проверять отдельно)
                         isLatest,
-                        isRecommended,
                         item["prerelease"]?.ToObject<bool>() ?? false,
                         item["draft"]?.ToObject<bool>() ?? false
                     ));
@@ -555,7 +561,6 @@ namespace SplashGames.Internal.UGPM
             {
                 string owner = item["owner"]["login"]?.ToString();
                 string name = item["name"]?.ToString();
-                string description = item["description"]?.ToString();
                 string cloneUrl = item["clone_url"]?.ToString();
                 int stars = item["stargazers_count"]?.ToObject<int>() ?? 0;
                 string updatedAt = item["updated_at"]?.ToString();
@@ -564,13 +569,15 @@ namespace SplashGames.Internal.UGPM
                     return null;
 
                 // Асинхронная загрузка `unity-git-package.json`
-                GitPackageInfo packageInfo = await FetchGitPackageInfo(owner, name);
-                Texture2D icon = await IconCacheManager.GetIcon(name, packageInfo?.IconUrl, _gitHubProvider.AccessToken);
-                List<VersionInfo> versions = await FetchReleasesAsync(owner, name, _gitHubProvider.AccessToken, packageInfo.RecommendedVersion);
+                PackageInfo packageInfo = await FetchPackageInfo(owner, name);
+
+                string iconPath = $"https://raw.githubusercontent.com/{owner}/{name}/main/{packageInfo?.iconPath}";
+                Texture2D icon = await IconCacheManager.GetIcon(name, iconPath, _gitHubProvider.AccessToken);
+                List<VersionInfo> versions = await FetchReleasesAsync(owner, name, _gitHubProvider.AccessToken);
 
                 bool isExist = _packageManagerService.HasPackage(name);
 
-                return new RepositoryInfo(owner, name, description, stars, updatedAt, cloneUrl, packageInfo, icon, versions, isExist);
+                return new RepositoryInfo(owner, name, stars, updatedAt, cloneUrl, icon, versions, isExist);
             }
             catch (Exception ex)
             {
@@ -579,9 +586,10 @@ namespace SplashGames.Internal.UGPM
             }
         }
 
-        private async Task<GitPackageInfo> FetchGitPackageInfo(string owner, string repoName)
+        private async Task<PackageInfo> FetchPackageInfo(string owner, string repoName, string version = null)
         {
-            string fileApiUrl = $"https://api.github.com/repos/{owner}/{repoName}/contents/{PackageFileName}";
+            string fileApiUrl = $"https://api.github.com/repos/{owner}/{repoName}/contents/package.json";
+            fileApiUrl += version != null ? $"#{version}" : "";
             Debug.Log($"Requesting file from: {fileApiUrl}");
 
             using (var request = new UnityEngine.Networking.UnityWebRequest(fileApiUrl, UnityEngine.Networking.UnityWebRequest.kHttpVerbGET))
@@ -601,13 +609,13 @@ namespace SplashGames.Internal.UGPM
                         if (string.IsNullOrEmpty(base64Content))
                         {
                             Debug.LogWarning($"File content is empty or not found for {repoName}.");
-                            return new GitPackageInfo(null);
+                            return new PackageInfo(null);
                         }
 
                         string fileContent = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(base64Content));
                         JObject json = JObject.Parse(fileContent);
 
-                        return new GitPackageInfo(json);
+                        return new PackageInfo(json);
                     }
                     catch (Exception ex)
                     {
@@ -620,7 +628,7 @@ namespace SplashGames.Internal.UGPM
                 }
             }
 
-            return new GitPackageInfo(null);
+            return new PackageInfo(null);
         }
 
         private async Task SendWebRequestAsync(UnityEngine.Networking.UnityWebRequest request)
@@ -641,6 +649,9 @@ namespace SplashGames.Internal.UGPM
 
             foreach (var repo in _repositories)
             {
+                if (_isHideInvalid && repo.HasUnityPackage == false)
+                    continue;
+
                 DrawRepositoryCard(repo, width);
                 count++;
 
@@ -697,9 +708,6 @@ namespace SplashGames.Internal.UGPM
             GUI.Label(new Rect(lastRect.x + 10, lastRect.y + 150, width - 20, 20), $"Stars: {repo.Stars}");
             GUI.Label(new Rect(lastRect.x + 10, lastRect.y + 170, width - 20, 20), $"Updated: {repo.UpdatedAt}");
 
-            string status = repo.HasUnityPackage ? "✅ Valid unity-git-package.json" : "❌ Invalid json file";
-            GUI.Label(new Rect(lastRect.x + 10, lastRect.y + 190, width - 20, 20), status, EditorStyles.miniLabel);
-
             // ✅ Добавляем галочку в правый нижний угол, если пакет уже импортирован
             if (repo.IsExist)
             {
@@ -734,33 +742,29 @@ namespace SplashGames.Internal.UGPM
         {
             public string Owner { get; set; }               // Владелец репозитория (юзер или организация)
             public string Name { get; set; }                // Название репозитория
-            public string Description { get; set; }         // Описание репозитория
             public int Stars { get; set; }                  // Количество звезд
             public string UpdatedAt { get; set; }           // Дата последнего обновления
             public string CloneUrl { get; set; }            // URL клонирования репозитория
 
-            public GitPackageInfo PackageInfo { get; }      // Информация о Unity Package
-            public Texture2D Icon { get; private set; }
+            public readonly Texture2D Icon;
             public IReadOnlyList<VersionInfo> Versions { get; private set; }
             public bool IsExist { get; }
 
-            public RepositoryInfo(string owner, string name, string description,
-                int stars, string updatedAt, string cloneUrl, GitPackageInfo packageInfo,
-                Texture2D icon, List<VersionInfo> versions, bool isExist)
+            public RepositoryInfo(string owner, string name,
+                int stars, string updatedAt, string cloneUrl, Texture2D icon,
+                List<VersionInfo> versions, bool isExist)
             {
                 Owner = owner;
                 Name = name;
-                Description = description;
                 Stars = stars;
                 UpdatedAt = updatedAt;
                 CloneUrl = cloneUrl;
-                PackageInfo = packageInfo;
-                Icon = icon;
                 Versions = versions;
                 IsExist = isExist;
+                Icon = icon;
             }
 
-            public bool HasUnityPackage => !string.IsNullOrEmpty(PackageInfo?.GitPackageUrl);
+            public bool HasUnityPackage => Versions.Count > 0;
             public string ChangelogUrl => HasUnityPackage ? $"https://github.com/{Owner}/{Name}/releases" : null;
 
             public VersionInfo GetVersionInfo()
@@ -782,6 +786,35 @@ namespace SplashGames.Internal.UGPM
         }
 
         [Serializable]
+        public class PackageInfo
+        {
+            public readonly string name;
+            public readonly string version;
+            public readonly string displayName;
+            public readonly string description;
+            public readonly string documentationUrl;
+            public readonly string licensesUrl;
+            public readonly string iconPath;
+
+            public PackageInfo(JObject json)
+            {
+                if (json == null)
+                {
+                    Debug.LogWarning("GitPackageInfo: JSON is null, using default values.");
+                    return;
+                }
+
+                name = json["name"]?.ToString() ?? string.Empty;
+                version = json["version"]?.ToString() ?? string.Empty;
+                displayName = json["displayName"]?.ToString() ?? string.Empty;
+                description = json["description"]?.ToString() ?? string.Empty;
+                documentationUrl = json["documentationUrl"]?.ToString() ?? string.Empty;
+                licensesUrl = json["licensesUrl"]?.ToString() ?? string.Empty;
+                iconPath = json["iconPath"]?.ToString() ?? string.Empty;
+            }
+        }
+
+        /*[Serializable]
         public class GitPackageInfo
         {
             public string GitPackageUrl { get; private set; }
@@ -811,34 +844,31 @@ namespace SplashGames.Internal.UGPM
 
                 Debug.Log($"Parsed GitPackageInfo: {GitPackageUrl}, Readme: {DocumentationUrl}, License: {LicenseUrl}, Icon: {IconUrl}");
             }
-        }
-    }
-
-    public class VersionInfo
-    {
-        public string Version { get; private set; }
-        public string ReleaseDate { get; private set; }
-        public string Changelog { get; private set; }
-        public string ChangelogUrl { get; private set; }
-        public bool IsInstalled { get; private set; }
-        public bool IsLatest { get; private set; }
-        public bool IsRecommended { get; private set; }
-        public bool IsPrerelease { get; private set; }
-        public bool IsDraft { get; private set; }
-        public bool IsExpanded { get; set; }
-
-        public VersionInfo(string version, string releaseDate, string changelog, string changelogUrl,
-            bool isInstalled, bool isLatest, bool isRecommended, bool isPrerelease, bool isDraft)
+        }*/
+        public class VersionInfo
         {
-            Version = version;
-            ReleaseDate = releaseDate;
-            Changelog = changelog;
-            ChangelogUrl = changelogUrl;
-            IsInstalled = isInstalled;
-            IsLatest = isLatest;
-            IsRecommended = isRecommended;
-            IsPrerelease = isPrerelease;
-            IsDraft = isDraft;
+            public readonly PackageInfo package;
+            public string ReleaseDate { get; private set; }
+            public string Changelog { get; private set; }
+            public string ChangelogUrl { get; private set; }
+            public bool IsInstalled { get; private set; }
+            public bool IsLatest { get; private set; }
+            public bool IsPrerelease { get; private set; }
+            public bool IsDraft { get; private set; }
+            public bool IsExpanded { get; set; }
+
+            public VersionInfo(PackageInfo package, string releaseDate, string changelog, string changelogUrl,
+                bool isInstalled, bool isLatest, bool isPrerelease, bool isDraft)
+            {
+                this.package = package;
+                ReleaseDate = releaseDate;
+                Changelog = changelog;
+                ChangelogUrl = changelogUrl;
+                IsInstalled = isInstalled;
+                IsLatest = isLatest;
+                IsPrerelease = isPrerelease;
+                IsDraft = isDraft;
+            }
         }
     }
 }

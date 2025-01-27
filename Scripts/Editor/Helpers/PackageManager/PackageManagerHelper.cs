@@ -73,18 +73,6 @@ namespace SplashGames.Internal.UGPM
             };
         }
 
-        public string GetPackageBundle(string name)
-        {
-            PackageInfo package = _checker.GetPackage(name);
-
-            if (package != null)
-            {
-                return package.name;
-            }
-
-            return null;
-        }
-
         internal bool HasPackage(string name)
         {
             return _checker.IsPackageExist(name);

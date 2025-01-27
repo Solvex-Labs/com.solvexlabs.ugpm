@@ -9,6 +9,7 @@ namespace SplashGames.Internal.UGPM
     {
         private static string CacheDirectory => Path.Combine(GetUnityPackageCachePath(), "package.splashgames.ugpm");
         private static readonly string PlaceholderIconPath = "Packages/com.splashgames.ugpm/Resources/placeholderIcon.png";
+        private static readonly string AlternativePlaceholderPath = "Assets/com.splashgames.ugpm/Resources/placeholderIcon.png";
 
         public static async Task<Texture2D> GetIcon(string repoName, string iconUrl, string accessToken)
         {
@@ -17,15 +18,9 @@ namespace SplashGames.Internal.UGPM
 
             string filePath = Path.Combine(CacheDirectory, repoName + ".png");
 
-            // ✅ 1. Проверяем локальный кэш Unity Package Manager
             if (File.Exists(filePath))
-            {
-                Debug.Log(filePath);
-
                 return LoadTextureFromFile(filePath);
-            }
 
-            // 🌍 2. Если нет - скачиваем
             Texture2D downloadedIcon = await DownloadAndSaveIcon(iconUrl, filePath, accessToken);
             return downloadedIcon ?? GetPlaceholderIcon();
         }
@@ -50,7 +45,6 @@ namespace SplashGames.Internal.UGPM
                 }
                 else
                 {
-                    Debug.LogError($"Failed to download icon: {url} - {request.error}");
                     return null;
                 }
             }
@@ -79,10 +73,14 @@ namespace SplashGames.Internal.UGPM
                 texture.LoadImage(fileData);
                 return texture;
             }
+            else if (File.Exists(AlternativePlaceholderPath))
+            {
+                byte[] fileData = File.ReadAllBytes(AlternativePlaceholderPath);
+                Texture2D texture = new Texture2D(128, 128);
+                texture.LoadImage(fileData);
+                return texture;
+            }
 
-            Debug.LogWarning($"Placeholder icon not found at {PlaceholderIconPath}. Using default gray texture.");
-
-            // Создаем заглушку, если файла нет
             Texture2D placeholder = new Texture2D(128, 128);
             Color fillColor = Color.gray;
             Color[] pixels = placeholder.GetPixels();
