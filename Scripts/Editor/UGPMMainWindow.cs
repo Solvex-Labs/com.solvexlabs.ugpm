@@ -505,7 +505,7 @@ namespace SplashGames.Internal.UGPM
                     PackageInfo package = await FetchPackageInfo(owner, repo, tag);
 
                     bool isLatest = latestReleaseId.HasValue && releaseId == latestReleaseId.Value;
-                    bool isInstalled = _packageManagerService.HasPackage(package.name);
+                    bool isInstalled = _packageManagerService.HasPackage(package.name, package.version);
 
                     versions.Add(new VersionInfo(
                         package,
@@ -556,7 +556,6 @@ namespace SplashGames.Internal.UGPM
                 if (string.IsNullOrEmpty(name))
                     return null;
 
-                // Асинхронная загрузка `unity-git-package.json`
                 PackageInfo packageInfo = await FetchPackageInfo(owner, name);
 
                 string iconPath = $"https://raw.githubusercontent.com/{owner}/{name}/main/{packageInfo?.iconPath}";

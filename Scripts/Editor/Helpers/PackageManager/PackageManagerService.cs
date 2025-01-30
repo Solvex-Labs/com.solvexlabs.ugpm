@@ -71,25 +71,17 @@ namespace SplashGames.Internal.UGPM
             };
         }
 
-        public async void UpdatePackage(string packageName, string gitPackageUrl)
+        public void UpdatePackage(string packageName, string gitPackageUrl)
         {
-            RemoveRequest removeRequest = Client.Remove(packageName);
-            while (!removeRequest.IsCompleted)
-                await Task.Yield();
-
-            if (removeRequest.Status == StatusCode.Success)
+            RemovePackage(packageName, () =>
             {
                 ImportGitPackage(gitPackageUrl);
-            }
-            else
-            {
-                Debug.LogError($"❌ Failed to remove package: {removeRequest.Error.message}");
-            }
+            });
         }
 
-        internal bool HasPackage(string packageBundle)
+        internal bool HasPackage(string packageBundle, string version = null)
         {
-            return _checker.IsPackageExist(packageBundle);
+            return _checker.IsPackageExist(packageBundle, version);
         }
 
         private static void ReopenUGPMWindow()

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEditor.PackageManager;
@@ -36,13 +37,16 @@ namespace SplashGames.Internal.UGPM
             return null;
         }
 
-        public bool IsPackageExist(string packageBundle)
+        public bool IsPackageExist(string packageBundle, string version = null)
         {
             foreach (var pair in _cachedPackages)
             {
                 bool isExist = pair.Value.packageId.Contains(packageBundle);
+                bool isCorrectVersion = String.IsNullOrEmpty(version)
+                    ? true
+                    : pair.Value.version == version;
 
-                if (isExist)
+                if (isExist && isCorrectVersion)
                 {
                     Cache(packageBundle, pair.Value);
                     return true;
