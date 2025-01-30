@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEditor;
 using UnityEditor.PackageManager;
@@ -21,6 +22,37 @@ namespace SplashGames.Internal.UGPM
             await _checker.Init();
         }
 
+        public void UpdatePackage(string packageName, string packageUrl)
+        {
+            if (HasPackage(packageName) == false)
+            {
+                ImportGitPackage(packageUrl);
+                return;
+            }
+
+            List<string> removeList = new List<string> { packageName };
+            List<string> addList = new List<string> { packageUrl };
+
+            AddAndRemoveRequest request = Client.AddAndRemove(addList.ToArray(), removeList.ToArray());
+
+            EditorApplication.update += () =>
+            {
+                if (request.IsCompleted)
+                {
+                    if (request.Status == StatusCode.Success)
+                    {
+                        Debug.Log($"Package updated successfully");
+                    }
+                    else
+                    {
+                        Debug.LogError($"Failed to update package: {request.Error.message}");
+                        EditorApplication.update -= () => { };
+                    }
+                    EditorApplication.update -= () => { };
+                }
+            };
+        }
+
         public void RemovePackage(string packageName, Action onSeccessCallback = null)
         {
             if (string.IsNullOrEmpty(packageName))
@@ -36,12 +68,12 @@ namespace SplashGames.Internal.UGPM
                     if (removeRequest.Status == StatusCode.Success)
                     {
                         onSeccessCallback?.Invoke();
-                        ReopenUGPMWindow();
                         Debug.Log("Package Remove successfully: " + removeRequest.PackageIdOrName);
                     }
                     else
                     {
                         Debug.Log("Package Remove failed: " + removeRequest.PackageIdOrName);
+                        EditorApplication.update -= () => { };
                     }
                     EditorApplication.update -= () => { };
                 }
@@ -58,7 +90,6 @@ namespace SplashGames.Internal.UGPM
                     if (addRequest.Status == StatusCode.Success)
                     {
                         onSeccessCallback?.Invoke();
-                        ReopenUGPMWindow();
                         Debug.Log("Package imported successfully: " + addRequest.Result.name);
                     }
                     else
@@ -71,25 +102,9 @@ namespace SplashGames.Internal.UGPM
             };
         }
 
-        public void UpdatePackage(string packageName, string gitPackageUrl)
-        {
-            RemovePackage(packageName, () =>
-            {
-                ImportGitPackage(gitPackageUrl);
-            });
-        }
-
         internal bool HasPackage(string packageBundle, string version = null)
         {
             return _checker.IsPackageExist(packageBundle, version);
-        }
-
-        private static void ReopenUGPMWindow()
-        {
-            EditorApplication.delayCall += () =>
-            {
-                UGPMMainWindow.ShowWindow();
-            };
         }
     }
 }

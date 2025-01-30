@@ -6,7 +6,6 @@ using Newtonsoft.Json.Linq;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Net.Http;
-using System.Text.RegularExpressions;
 
 namespace SplashGames.Internal.UGPM
 {
@@ -18,6 +17,8 @@ namespace SplashGames.Internal.UGPM
         private string _selectedSource;
         private List<RepositoryInfo> _repositories = new List<RepositoryInfo>();
         private Vector2 _repoScroll, _detailsScroll;
+        private Vector2 _dependenciesScrollPosition; // Переменная для хранения положения скролла
+
         private RepositoryInfo _selectedRepo;
 
         private int _totalRepositories = 0;  // Общее количество репозиториев
@@ -211,7 +212,7 @@ namespace SplashGames.Internal.UGPM
             EditorGUILayout.Space();
 
             // 🔹 Нижние кнопки (Import/Remove)
-            if (_selectedRepo.HasUnityPackage)
+            if (_selectedRepo.HasUnityPackage && _selectedTab == RepositoryDetailTab.Description)
             {
                 EditorGUILayout.BeginHorizontal();
 
@@ -251,7 +252,12 @@ namespace SplashGames.Internal.UGPM
             }
         }
 
-        // Рендеринг ссылок (если нет ссылки, кнопка неактивна)
+        private void UpdatePackage(string gitURL, PackageInfo info)
+        {
+            string path = $"{gitURL}#v{info.version}";
+            _packageManagerService.UpdatePackage(info.name, path);
+        }
+
         private void DrawLinkButton(string label, string url)
         {
             GUI.enabled = !string.IsNullOrEmpty(url);
@@ -298,24 +304,45 @@ namespace SplashGames.Internal.UGPM
 
                 case RepositoryDetailTab.Dependencies:
                     GUILayout.Label("Dependencies:", EditorStyles.boldLabel);
-                    GUILayout.Label("No dependencies found.", EditorStyles.wordWrappedLabel);
-                    /*if (_selectedRepo.PackageInfo?.GitDependencies != null && _selectedRepo.PackageInfo.GitDependencies.Length > 0)
-                    {
-                        foreach (var dependency in _selectedRepo.PackageInfo.GitDependencies)
-                        {
-                            GUILayout.Label(dependency);
-                        }
-                    }
-                    else
-                    {
-                        GUILayout.Label("No dependencies found.", EditorStyles.wordWrappedLabel);
-                    }*/
+                    DrawDependencies(_selectedRepo.GetVersionInfo().package.dependencies);
                     break;
 
                 default:
                     GUILayout.Label("Select a tab to view details.", EditorStyles.helpBox);
                     break;
             }
+        }
+
+        private void DrawDependencies(Dictionary<string, string> dependencies)
+        {
+            if (dependencies == null || dependencies.Count == 0)
+            {
+                GUILayout.Label("No dependencies found.", EditorStyles.helpBox);
+                return;
+            }
+
+            _dependenciesScrollPosition = GUILayout.BeginScrollView(_dependenciesScrollPosition);
+
+            EditorGUILayout.BeginVertical("box");
+
+            // 🔹 Заголовки
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Label("Package Name", EditorStyles.boldLabel, GUILayout.Width(250));
+            GUILayout.Label("Version", EditorStyles.boldLabel, GUILayout.Width(100));
+            EditorGUILayout.EndHorizontal();
+
+            GUILayout.Box("", GUILayout.ExpandWidth(true), GUILayout.Height(1));
+
+            foreach (KeyValuePair<string, string> dependency in dependencies)
+            {
+                EditorGUILayout.BeginHorizontal();
+                GUILayout.Label(dependency.Key, EditorStyles.label, GUILayout.Width(250));
+                GUILayout.Label(dependency.Value, EditorStyles.label, GUILayout.Width(100));
+                EditorGUILayout.EndHorizontal();
+            }
+
+            EditorGUILayout.EndVertical();
+            GUILayout.EndScrollView();
         }
 
         private Vector2 _versionHistoryScroll; // Переменная для хранения позиции скролла
@@ -371,7 +398,6 @@ namespace SplashGames.Internal.UGPM
             GUILayout.Label(info.ReleaseDate, EditorStyles.miniLabel);
             EditorGUILayout.EndHorizontal();
 
-            // Если карточка развернута, рисуем дополнительную информацию
             if (info.IsExpanded)
             {
                 EditorGUILayout.Space();
@@ -398,10 +424,21 @@ namespace SplashGames.Internal.UGPM
                 }
                 else
                 {
-                    if (GUILayout.Button("Update", GUILayout.Width(80)))
+                    if (_selectedRepo.IsExist)
                     {
-                        string path = $"{_selectedRepo.CloneUrl}#v{info.package.version}";
-                        _packageManagerService.UpdatePackage(info.package.name, path);
+                        if (GUILayout.Button("Update", GUILayout.Width(80)))
+                        {
+                            Close();
+                            UpdatePackage(_selectedRepo.CloneUrl, info.package);
+                        }
+                    }
+                    else
+                    {
+                        if (GUILayout.Button("Import", GUILayout.Width(80)))
+                        {
+                            Close();
+                            Import(_selectedRepo.CloneUrl, info.package);
+                        }
                     }
                 }
 
@@ -602,6 +639,8 @@ namespace SplashGames.Internal.UGPM
                         string fileContent = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(base64Content));
                         JObject json = JObject.Parse(fileContent);
 
+                        Debug.Log(json.ToString());
+
                         return new PackageInfo(json);
                     }
                     catch (Exception ex)
@@ -790,6 +829,7 @@ namespace SplashGames.Internal.UGPM
             public readonly string description;
             public readonly string documentationUrl;
             public readonly string licensesUrl;
+            public readonly Dictionary<string, string> dependencies;
             public readonly string iconPath;
 
             public PackageInfo(JObject json)
@@ -807,40 +847,18 @@ namespace SplashGames.Internal.UGPM
                 documentationUrl = json["documentationUrl"]?.ToString() ?? string.Empty;
                 licensesUrl = json["licensesUrl"]?.ToString() ?? string.Empty;
                 iconPath = json["iconPath"]?.ToString() ?? string.Empty;
+
+                dependencies = new Dictionary<string, string>();
+                if (json["dependencies"] is JObject deps)
+                {
+                    foreach (var item in deps)
+                    {
+                        dependencies[item.Key] = item.Value.ToString();
+                    }
+                }
             }
         }
 
-        /*[Serializable]
-        public class GitPackageInfo
-        {
-            public string GitPackageUrl { get; private set; }
-            public string DocumentationUrl { get; private set; }
-            public string LicenseUrl { get; private set; }
-            public string IconUrl { get; private set; }
-            public string RecommendedVersion { get; private set; }
-            public string[] GitDependencies { get; private set; }
-
-            // ✅ Конструктор, который принимает JSON-объект и безопасно извлекает данные
-            public GitPackageInfo(JObject json)
-            {
-                if (json == null)
-                {
-                    Debug.LogWarning("GitPackageInfo: JSON is null, using default values.");
-                    return;
-                }
-
-                GitPackageUrl = json["gitPackageUrl"]?.ToString() ?? string.Empty;
-                DocumentationUrl = json["readmeUrl"]?.ToString() ?? string.Empty;
-                LicenseUrl = json["licenseUrl"]?.ToString() ?? string.Empty;
-                IconUrl = json["iconUrl"]?.ToString() ?? string.Empty;
-                RecommendedVersion = json["recommended"]?.ToString() ?? string.Empty;
-
-                var dependenciesArray = json["gitDependencies"] as JArray;
-                GitDependencies = dependenciesArray?.ToObject<string[]>() ?? new string[0];
-
-                Debug.Log($"Parsed GitPackageInfo: {GitPackageUrl}, Readme: {DocumentationUrl}, License: {LicenseUrl}, Icon: {IconUrl}");
-            }
-        }*/
         public class VersionInfo
         {
             public readonly PackageInfo package;
