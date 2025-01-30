@@ -1,12 +1,9 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEditor;
 using UnityEditor.PackageManager;
 using UnityEditor.PackageManager.Requests;
 using UnityEngine;
-using PackageInfo = UnityEditor.PackageManager.PackageInfo;
 
 namespace SplashGames.Internal.UGPM
 {
@@ -67,15 +64,32 @@ namespace SplashGames.Internal.UGPM
                     else
                     {
                         Debug.LogError("Package import failed: " + addRequest.Error.message);
+                        EditorApplication.update -= () => { };
                     }
                     EditorApplication.update -= () => { };
                 }
             };
         }
 
-        internal bool HasPackage(string name)
+        public async void UpdatePackage(string packageName, string gitPackageUrl)
         {
-            return _checker.IsPackageExist(name);
+            RemoveRequest removeRequest = Client.Remove(packageName);
+            while (!removeRequest.IsCompleted)
+                await Task.Yield();
+
+            if (removeRequest.Status == StatusCode.Success)
+            {
+                ImportGitPackage(gitPackageUrl);
+            }
+            else
+            {
+                Debug.LogError($"❌ Failed to remove package: {removeRequest.Error.message}");
+            }
+        }
+
+        internal bool HasPackage(string packageBundle)
+        {
+            return _checker.IsPackageExist(packageBundle);
         }
 
         private static void ReopenUGPMWindow()

@@ -21,7 +21,7 @@ namespace SplashGames.Internal.UGPM
             ListRequest request = Client.List(true);
             while (!request.IsCompleted)
             {
-                await Task.Delay(10);
+                await Task.Delay(1);
             }
 
             foreach (PackageInfo package in request.Result)

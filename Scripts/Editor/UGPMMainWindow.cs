@@ -219,14 +219,14 @@ namespace SplashGames.Internal.UGPM
                 {
                     if (GUILayout.Button("Remove", GUILayout.Height(30)))
                     {
-                        //_packageManagerService.RemovePackage(_selectedRepo.GetVersionInfo().package.name, Close);
+                        Remove(_selectedRepo.GetVersionInfo().package.name);
                     }
                 }
                 else
                 {
                     if (GUILayout.Button("Import", GUILayout.Height(30)))
                     {
-                        //_packageManagerService.ImportGitPackage(_selectedRepo.PackageInfo?.GitPackageUrl, Close);
+                        Import(_selectedRepo.CloneUrl, _selectedRepo.GetVersionInfo().package);
                     }
                 }
                 
@@ -234,6 +234,21 @@ namespace SplashGames.Internal.UGPM
             }
 
             EditorGUILayout.EndVertical();
+        }
+
+        private void Import(string gitURL, PackageInfo info)
+        {
+            string path = $"{gitURL}#v{info.version}";
+            Debug.Log(path);
+            _packageManagerService.ImportGitPackage(path, Close);
+        }
+
+        private void Remove(string packageBundle)
+        {
+            if (_packageManagerService.HasPackage(packageBundle))
+            {
+                _packageManagerService.RemovePackage(packageBundle, Close);
+            }
         }
 
         // Рендеринг ссылок (если нет ссылки, кнопка неактивна)
@@ -378,14 +393,15 @@ namespace SplashGames.Internal.UGPM
                 {
                     if (GUILayout.Button("Remove", GUILayout.Width(80)))
                     {
-                        Debug.Log($"Removing {version}");
+                        Remove(info.package.name);
                     }
                 }
                 else
                 {
                     if (GUILayout.Button("Update", GUILayout.Width(80)))
                     {
-                        Debug.Log($"Updating to {version}");
+                        string path = $"{_selectedRepo.CloneUrl}#v{info.package.version}";
+                        _packageManagerService.UpdatePackage(info.package.name, path);
                     }
                 }
 
@@ -484,12 +500,12 @@ namespace SplashGames.Internal.UGPM
                 foreach (var item in releases)
                 {
                     long releaseId = item["id"]?.ToObject<long>() ?? 0;
-                    string version = NormalizeVersion(item["tag_name"]?.ToString());
+                    string tag = item["tag_name"]?.ToString();
 
-                    PackageInfo package = await FetchPackageInfo(owner, repo, version);
+                    PackageInfo package = await FetchPackageInfo(owner, repo, tag);
 
                     bool isLatest = latestReleaseId.HasValue && releaseId == latestReleaseId.Value;
-                    bool isInstalled = false;
+                    bool isInstalled = _packageManagerService.HasPackage(package.name);
 
                     versions.Add(new VersionInfo(
                         package,
@@ -505,27 +521,6 @@ namespace SplashGames.Internal.UGPM
             }
 
             return versions;
-        }
-
-        public static string NormalizeVersion(string version)
-        {
-            if (string.IsNullOrEmpty(version))
-                return "0.0.0"; // Возвращаем дефолтное значение, если версия пустая
-
-            // Убираем все символы, кроме цифр и точек
-            string cleanedVersion = Regex.Replace(version, @"[^\d.]", "");
-
-            // Разбиваем строку по точкам, убирая пустые части
-            var parts = cleanedVersion.Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
-
-            // Если элементов меньше 3, дополняем до трех "0"
-            while (parts.Length < 3)
-                cleanedVersion += ".0";
-
-            // Если элементов больше 3, отбрасываем лишние
-            parts = parts.Take(3).ToArray();
-
-            return string.Join(".", parts);
         }
 
         private async Task<long?> GetLatestReleaseIdAsync(string owner, string repo, string accessToken)
@@ -582,7 +577,7 @@ namespace SplashGames.Internal.UGPM
         private async Task<PackageInfo> FetchPackageInfo(string owner, string repoName, string version = null)
         {
             string fileApiUrl = $"https://api.github.com/repos/{owner}/{repoName}/contents/package.json";
-            fileApiUrl += version != null ? $"#{version}" : "";
+            fileApiUrl += version != null ? $"?ref={version}" : "";
             Debug.Log($"Requesting file from: {fileApiUrl}");
 
             using (var request = new UnityEngine.Networking.UnityWebRequest(fileApiUrl, UnityEngine.Networking.UnityWebRequest.kHttpVerbGET))
