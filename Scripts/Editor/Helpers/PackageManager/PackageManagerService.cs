@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEditor;
+using UnityEditor.Compilation;
 using UnityEditor.PackageManager;
 using UnityEditor.PackageManager.Requests;
 using UnityEngine;
@@ -11,6 +12,8 @@ namespace SplashGames.Internal.UGPM
     public class PackageManagerService
     {
         private readonly PackageChecker _checker;
+        private AddAndRemoveRequest _addRequest;
+        private bool _isProcessing = false;
 
         public PackageManagerService()
         {
@@ -100,6 +103,43 @@ namespace SplashGames.Internal.UGPM
                     EditorApplication.update -= () => { };
                 }
             };
+        } 
+
+        public async void InstallDependencies(string[] dependencies)
+        {
+            if (_isProcessing)
+            {
+                Debug.LogWarning("⚠Installation is already in progress.");
+                return;
+            }
+
+            _isProcessing = true;
+            Debug.Log("Installing multiple dependencies at once...");
+
+            _addRequest = Client.AddAndRemove(dependencies, new string[0]);
+
+            while (!_addRequest.IsCompleted)
+            {
+                await Task.Yield();
+            }
+
+            if (_addRequest.Status == StatusCode.Success)
+            {
+                Debug.Log($"Successfully installed {dependencies.Length} packages.");
+            }
+            else
+            {
+                Debug.LogError($"Failed to install packages: {_addRequest.Error.message}");
+                _isProcessing = false;
+                return;
+            }
+
+            Client.Resolve();
+
+            Debug.Log("Triggering final compilation...");
+            AssetDatabase.Refresh();
+            CompilationPipeline.RequestScriptCompilation();
+            _isProcessing = false;
         }
 
         internal bool HasPackage(string packageBundle, string version = null)

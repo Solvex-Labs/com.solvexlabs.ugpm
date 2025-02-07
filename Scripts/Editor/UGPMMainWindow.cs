@@ -17,18 +17,18 @@ namespace SplashGames.Internal.UGPM
         private string _selectedSource;
         private List<RepositoryInfo> _repositories = new List<RepositoryInfo>();
         private Vector2 _repoScroll, _detailsScroll;
-        private Vector2 _dependenciesScrollPosition; // Переменная для хранения положения скролла
+        private Vector2 _dependenciesScrollPosition;
 
         private RepositoryInfo _selectedRepo;
 
-        private int _totalRepositories = 0;  // Общее количество репозиториев
-        private int _loadedRepositories = 0; // Количество загруженных репозиториев
-        private bool _isLoading = false;     // Флаг загрузки
+        private int _totalRepositories = 0;
+        private int _loadedRepositories = 0;
+        private bool _isLoading = false;
 
         private const int MinWindowSize = 1200;
-        private const int CardWidth = 220;  // Фиксированная ширина карточки
-        private const int MinColumsAmount = 3;      // Количество колонок
-        private const int Padding = 35;     // Внутренний отступ
+        private const int CardWidth = 220;
+        private const int MinColumsAmount = 3;
+        private const int Padding = 35;
 
         private bool _isHideInvalid;
 
@@ -68,16 +68,14 @@ namespace SplashGames.Internal.UGPM
             EditorGUILayout.BeginHorizontal();
 
             bool canPreviewRepo = _selectedRepo != null && _selectedRepo.GetVersionInfo() != null;
-            float leftPanelWidth = canPreviewRepo ? CardWidth * MinColumsAmount + Padding : MinWindowSize; // Учитываем отступы
+            float leftPanelWidth = canPreviewRepo ? CardWidth * MinColumsAmount + Padding : MinWindowSize;
             int columnAmount = (int)(leftPanelWidth / CardWidth);
-            // 🎯 Левая панель (Источники + Список репозиториев)
+            
             EditorGUILayout.BeginVertical(GUILayout.Width(leftPanelWidth));
 
             if (_gitHubProvider.Sources.Count > 0 && _isLoading == false)
             {
                 GUILayout.Label("Sources:", EditorStyles.boldLabel);
-
-                // Выбор источника
                 int selectedIndex = new List<string>(_gitHubProvider.Sources).IndexOf(_selectedSource);
                 selectedIndex = EditorGUILayout.Popup(selectedIndex, _gitHubProvider.Sources.ToList().ToArray(), GUILayout.Width(280));
 
@@ -100,7 +98,6 @@ namespace SplashGames.Internal.UGPM
 
             EditorGUILayout.Space();
 
-            // 🖼️ Индикатор загрузки
             if (_isLoading && _totalRepositories > 0)
             {
                 float progress = _loadedRepositories / (float)_totalRepositories;
@@ -108,7 +105,6 @@ namespace SplashGames.Internal.UGPM
                 EditorGUI.ProgressBar(EditorGUILayout.GetControlRect(false, 20), progress, title);
             }
 
-            // 🖼️ Область со списком репозиториев
             _repoScroll = EditorGUILayout.BeginScrollView(_repoScroll, GUILayout.Width(leftPanelWidth), GUILayout.Height(position.height - 50));
 
             if (!_isLoading)
@@ -117,7 +113,7 @@ namespace SplashGames.Internal.UGPM
             }
 
             EditorGUILayout.EndScrollView();
-            EditorGUILayout.EndVertical(); // Закрытие левой панели
+            EditorGUILayout.EndVertical();
 
             if (canPreviewRepo)
             {
@@ -157,7 +153,6 @@ namespace SplashGames.Internal.UGPM
 
             EditorGUILayout.BeginVertical("box", GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
 
-            // 🔹 Верхняя секция с иконкой и названием
             EditorGUILayout.BeginHorizontal();
 
             if (_selectedRepo.Icon != null)
@@ -187,9 +182,9 @@ namespace SplashGames.Internal.UGPM
 
             // 🔹 Верхние кнопки (Documentation, Changelog, Licenses)
             EditorGUILayout.BeginHorizontal();
-            DrawLinkButton("Documentation", info.package.documentationUrl);
-            DrawLinkButton("Changelog", _selectedRepo.ChangelogUrl);
-            DrawLinkButton("License", info.package.licensesUrl);
+            DrawLinkButton("Documentation", info.package.documentationUrl, GUILayout.Height(25));
+            DrawLinkButton("Changelog", _selectedRepo.ChangelogUrl, GUILayout.Height(25));
+            DrawLinkButton("License", info.package.licensesUrl, GUILayout.Height(25));
             EditorGUILayout.EndHorizontal();
 
             // 🔹 Горизонтальная линия
@@ -240,8 +235,27 @@ namespace SplashGames.Internal.UGPM
         private void Import(string gitURL, PackageInfo info)
         {
             string path = $"{gitURL}#v{info.version}";
-            Debug.Log(path);
-            _packageManagerService.ImportGitPackage(path, Close);
+            List<string> dependencies = new List<string>();
+
+            //TODO add dependency validation before installing
+
+            foreach (var dependency in info.dependencies)
+            {
+                dependencies.Add($"{dependency.Key}@{dependency.Value}");
+            }
+
+            foreach (var thirdPartyDependency in info.thirdPartyDependencies)
+            {
+                dependencies.Add(thirdPartyDependency.Value);
+            }
+            dependencies.Add(path);
+
+            foreach(string str in dependencies)
+            {
+                Debug.Log(str);
+            }
+            
+            _packageManagerService.InstallDependencies(dependencies.ToArray());
         }
 
         private void Remove(string packageBundle)
@@ -258,17 +272,16 @@ namespace SplashGames.Internal.UGPM
             _packageManagerService.UpdatePackage(info.name, path);
         }
 
-        private void DrawLinkButton(string label, string url)
+        private void DrawLinkButton(string label, string url, params GUILayoutOption[] options)
         {
             GUI.enabled = !string.IsNullOrEmpty(url);
-            if (GUILayout.Button(label, GUILayout.Height(25)))
+            if (GUILayout.Button(label, options))
             {
                 Application.OpenURL(url);
             }
             GUI.enabled = true;
         }
 
-        // Рендеринг кнопок переключения контента
         private void DrawTabButton(string label, RepositoryDetailTab tab, bool isEnable)
         {
             GUI.enabled = isEnable;
@@ -279,7 +292,6 @@ namespace SplashGames.Internal.UGPM
             GUI.enabled = true;
         }
 
-        // Рендеринг контента в зависимости от активной вкладки
         private void DrawSelectedTabContent()
         {
             switch (_selectedTab)
@@ -294,7 +306,7 @@ namespace SplashGames.Internal.UGPM
 
                     if (_selectedRepo.Versions == null || (_selectedRepo.Versions != null && _selectedRepo.Versions.Count == 0))
                     {
-                        GUILayout.Label("No version history available.", EditorStyles.wordWrappedLabel); // Можно заменить на данные из GitPackageInfo
+                        GUILayout.Label("No version history available.", EditorStyles.wordWrappedLabel);
                         break;
                     }
 
@@ -303,8 +315,7 @@ namespace SplashGames.Internal.UGPM
                     break;
 
                 case RepositoryDetailTab.Dependencies:
-                    GUILayout.Label("Dependencies:", EditorStyles.boldLabel);
-                    DrawDependencies(_selectedRepo.GetVersionInfo().package.dependencies);
+                    DrawDependencies(_selectedRepo.GetVersionInfo().package);
                     break;
 
                 default:
@@ -313,39 +324,60 @@ namespace SplashGames.Internal.UGPM
             }
         }
 
-        private void DrawDependencies(Dictionary<string, string> dependencies)
+        private void DrawDependencies(PackageInfo package)
         {
-            if (dependencies == null || dependencies.Count == 0)
-            {
-                GUILayout.Label("No dependencies found.", EditorStyles.helpBox);
-                return;
-            }
-
             _dependenciesScrollPosition = GUILayout.BeginScrollView(_dependenciesScrollPosition);
 
             EditorGUILayout.BeginVertical("box");
 
-            // 🔹 Заголовки
             EditorGUILayout.BeginHorizontal();
             GUILayout.Label("Package Name", EditorStyles.boldLabel, GUILayout.Width(250));
             GUILayout.Label("Version", EditorStyles.boldLabel, GUILayout.Width(100));
             EditorGUILayout.EndHorizontal();
 
             GUILayout.Box("", GUILayout.ExpandWidth(true), GUILayout.Height(1));
-
-            foreach (KeyValuePair<string, string> dependency in dependencies)
+            GUILayout.Label("Unity Dependencies:", EditorStyles.boldLabel);
+            EditorGUILayout.BeginHorizontal(); 
+            if (package.dependencies == null || package.dependencies.Count == 0)
             {
-                EditorGUILayout.BeginHorizontal();
-                GUILayout.Label(dependency.Key, EditorStyles.label, GUILayout.Width(250));
-                GUILayout.Label(dependency.Value, EditorStyles.label, GUILayout.Width(100));
-                EditorGUILayout.EndHorizontal();
+                GUILayout.Label("No dependencies found.", EditorStyles.helpBox);
             }
+            else
+            {
+                foreach (KeyValuePair<string, string> dependency in package.dependencies)
+                {
+                    EditorGUILayout.BeginHorizontal();
+                    GUILayout.Label(dependency.Key, EditorStyles.label, GUILayout.Width(250));
+                    GUILayout.Label(dependency.Value, EditorStyles.label, GUILayout.Width(100));
+                    EditorGUILayout.EndHorizontal();
+                }
+            }
+            EditorGUILayout.EndHorizontal();
+
+            GUILayout.Box("", GUILayout.ExpandWidth(true), GUILayout.Height(1));
+            GUILayout.Label("Third Party Dependencies:", EditorStyles.boldLabel);
+            EditorGUILayout.BeginHorizontal();
+            if (package.thirdPartyDependencies == null || package.thirdPartyDependencies.Count == 0)
+            {
+                GUILayout.Label("No dependencies found.", EditorStyles.helpBox);
+            }
+            else
+            {
+                foreach (KeyValuePair<string, string> dependency in package.thirdPartyDependencies)
+                {
+                    EditorGUILayout.BeginHorizontal();
+                    GUILayout.Label(dependency.Key, EditorStyles.label, GUILayout.Width(250));
+                    DrawLinkButton("Git", dependency.Value, GUILayout.Width(50));
+                    EditorGUILayout.EndHorizontal();
+                }
+            }
+            EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.EndVertical();
             GUILayout.EndScrollView();
         }
 
-        private Vector2 _versionHistoryScroll; // Переменная для хранения позиции скролла
+        private Vector2 _versionHistoryScroll;
 
         private void DrawVersionHistory(IReadOnlyList<VersionInfo> versions)
         {
@@ -355,7 +387,6 @@ namespace SplashGames.Internal.UGPM
                 return;
             }
 
-            // Обертываем в ScrollView
             _versionHistoryScroll = EditorGUILayout.BeginScrollView(_versionHistoryScroll);
 
             foreach (var version in versions)
@@ -366,14 +397,13 @@ namespace SplashGames.Internal.UGPM
                 DrawVersionCard(version);
             }
 
-            EditorGUILayout.EndScrollView(); // Закрываем ScrollView
+            EditorGUILayout.EndScrollView();
         }
 
         private void DrawVersionCard(VersionInfo info)
         {
             EditorGUILayout.BeginVertical("box");
 
-            // Кнопка переключения состояния (свернуть/развернуть)
             EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button(info.IsExpanded ? "▼" : "▶", GUILayout.Width(20)))
             {
@@ -381,10 +411,8 @@ namespace SplashGames.Internal.UGPM
             }
 
             string version = info.package.version;
-            // Версия
             GUILayout.Label(version, EditorStyles.boldLabel);
 
-            // Определяем тип версии
             if (info.IsLatest)
             {
                 DrawVersionType("Recommended", Color.green);
@@ -477,16 +505,16 @@ namespace SplashGames.Internal.UGPM
                 if (request.result == UnityEngine.Networking.UnityWebRequest.Result.Success)
                 {
                     var jsonArray = JArray.Parse(request.downloadHandler.text);
-                    _totalRepositories = jsonArray.Count; // Устанавливаем общее количество репозиториев
+                    _totalRepositories = jsonArray.Count;
 
                     List<Task<RepositoryInfo>> tasks = new List<Task<RepositoryInfo>>();
 
                     foreach (var item in jsonArray)
                     {
-                        tasks.Add(ParseRepository(item)); // Запускаем обработку каждого репозитория
+                        tasks.Add(ParseRepository(item));
                     }
 
-                    var results = await Task.WhenAll(tasks); // Дожидаемся всех задач
+                    var results = await Task.WhenAll(tasks);
 
                     foreach (var repo in results)
                     {
@@ -549,7 +577,7 @@ namespace SplashGames.Internal.UGPM
                         item["published_at"]?.ToString(),
                         item["body"]?.ToString(),
                         item["html_url"]?.ToString(),
-                        isInstalled, // IsInstalled (нужно проверять отдельно)
+                        isInstalled,
                         isLatest,
                         item["prerelease"]?.ToObject<bool>() ?? false,
                         item["draft"]?.ToObject<bool>() ?? false
@@ -681,7 +709,6 @@ namespace SplashGames.Internal.UGPM
                 DrawRepositoryCard(repo, width);
                 count++;
 
-                // Начинаем новую строку каждые `columns` элементов
                 if (count % columns == 0)
                 {
                     EditorGUILayout.EndHorizontal();
@@ -698,14 +725,12 @@ namespace SplashGames.Internal.UGPM
         {
             bool isSelected = _selectedRepo == repo;
 
-            // Определяем стиль карточки
             GUIStyle cardStyle = new GUIStyle(GUI.skin.box);
 
-            // Добавляем выделение при выборе
             if (isSelected)
             {
                 cardStyle.normal.background = Texture2D.whiteTexture;
-                GUI.backgroundColor = Color.cyan; // Цвет рамки
+                GUI.backgroundColor = Color.cyan;
             }
             else
             {
@@ -716,60 +741,48 @@ namespace SplashGames.Internal.UGPM
             {
                 _selectedRepo = repo;
                 _selectedTab = RepositoryDetailTab.Description;
-                Repaint(); // Обновляем UI
+                Repaint();
             }
 
-            // Получаем последнюю область, куда была отрисована карточка
             Rect lastRect = GUILayoutUtility.GetLastRect();
-
-            // 🟢 Рисуем границу только для выделенной карточки
             if (isSelected)
             {
                 DrawBorder(lastRect, 2f, Color.cyan);
             }
 
-            // Рисуем текст и элементы внутри карточки
             GUI.Label(new Rect(lastRect.x + 10, lastRect.y + 10, width - 20, 20), repo.GetDisplayName(), EditorStyles.boldLabel);
             GUI.DrawTexture(new Rect(lastRect.x + 10, lastRect.y + 40, width - 20, 100), repo.Icon, ScaleMode.ScaleToFit);
             GUI.Label(new Rect(lastRect.x + 10, lastRect.y + 150, width - 20, 20), $"Stars: {repo.Stars}");
             GUI.Label(new Rect(lastRect.x + 10, lastRect.y + 170, width - 20, 20), $"Updated: {repo.UpdatedAt}");
 
-            // ✅ Добавляем галочку в правый нижний угол, если пакет уже импортирован
             if (repo.IsExist)
             {
                 Rect checkmarkRect = new Rect(lastRect.x + width - 25, lastRect.y + 225, 20, 20);
                 GUI.DrawTexture(checkmarkRect, EditorGUIUtility.IconContent("d_Toggle Icon").image as Texture2D);
             }
 
-            // Сбрасываем цвет
             GUI.backgroundColor = Color.white;
         }
 
         private void DrawBorder(Rect rect, float thickness, Color color)
         {
-            // Запоминаем текущий цвет
             Color prevColor = GUI.color;
             GUI.color = color;
 
-            // Верхняя линия
             GUI.DrawTexture(new Rect(rect.x, rect.y, rect.width, thickness), Texture2D.whiteTexture);
-            // Нижняя линия
             GUI.DrawTexture(new Rect(rect.x, rect.y + rect.height - thickness, rect.width, thickness), Texture2D.whiteTexture);
-            // Левая линия
             GUI.DrawTexture(new Rect(rect.x, rect.y, thickness, rect.height), Texture2D.whiteTexture);
-            // Правая линия
             GUI.DrawTexture(new Rect(rect.x + rect.width - thickness, rect.y, thickness, rect.height), Texture2D.whiteTexture);
 
-            // Восстанавливаем исходный цвет
             GUI.color = prevColor;
         }
 
         public class RepositoryInfo
         {
-            public string Owner { get; set; }               // Владелец репозитория (юзер или организация)
-            public int Stars { get; set; }                  // Количество звезд
-            public string UpdatedAt { get; set; }           // Дата последнего обновления
-            public string CloneUrl { get; set; }            // URL клонирования репозитория
+            public string Owner { get; set; }
+            public int Stars { get; set; }
+            public string UpdatedAt { get; set; }
+            public string CloneUrl { get; set; }
 
             private readonly string _name;
 
@@ -831,6 +844,7 @@ namespace SplashGames.Internal.UGPM
             public readonly string licensesUrl;
             public readonly Dictionary<string, string> dependencies;
             public readonly string iconPath;
+            public readonly Dictionary<string, string> thirdPartyDependencies;
 
             public PackageInfo(JObject json)
             {
@@ -854,6 +868,15 @@ namespace SplashGames.Internal.UGPM
                     foreach (var item in deps)
                     {
                         dependencies[item.Key] = item.Value.ToString();
+                    }
+                }
+
+                thirdPartyDependencies = new Dictionary<string, string>();
+                if (json["thirdPartyDependencies"] is JObject thirdDeps)
+                {
+                    foreach (var item in thirdDeps)
+                    {
+                        thirdPartyDependencies[item.Key] = item.Value.ToString();
                     }
                 }
             }

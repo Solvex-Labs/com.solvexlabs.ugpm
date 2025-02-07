@@ -1,6 +1,6 @@
 {
   "name": "com.splashgames.ugpm",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "displayName": "Unity Git Package Manager",
   "description": "Unity Git Package Manager is a tool for managing custom Unity packages hosted in Git repositories. UGPM provides an intuitive interface for browsing available repositories, checking compatibility, and automatically importing them into your Unity project.",
   "unity": "2022.3",
