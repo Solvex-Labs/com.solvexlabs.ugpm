@@ -1,18 +1,18 @@
 {
-  "name": "com.splashgames.ugpm",
+  "name": "com.solvexlabs.ugpm",
   "version": "1.0.3",
   "displayName": "Unity Git Package Manager",
   "description": "Unity Git Package Manager is a tool for managing custom Unity packages hosted in Git repositories. UGPM provides an intuitive interface for browsing available repositories, checking compatibility, and automatically importing them into your Unity project.",
   "unity": "2022.3",
-  "documentationUrl": "https://github.com/splash-games-studio/com.splashgames.ugpm/?tab=readme-ov-file#readme",
-  "licensesUrl": "https://github.com/splash-games-studio/com.splashgames.ugpm/?tab=MIT-1-ov-file#readme",
+  "documentationUrl": "https://github.com/Solvex-Labs/com.solvexlabs.ugpm/?tab=readme-ov-file#readme",
+  "licensesUrl": "https://github.com/Solvex-Labs/com.solvexlabs.ugpm/?tab=MIT-1-ov-file#readme",
   "dependencies": {
     "com.unity.nuget.newtonsoft-json": "3.2.0"
   },
   "author": {
-    "email": "artemsvobodin@splashgames.app",
-    "name": "Artem Svobodin",
-    "url": "https://github.com/SvobodinF"
+    "email": "artem.svobodin01@gmail.com",
+    "name": "Solvex Labs",
+    "url": "https://github.com/Solvex-Labs/com.solvexlabs.ugpm"
   },
   "iconPath": "Resources/packageIcon.png"
 }
