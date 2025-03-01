@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.Linq;
 using System.Net.Http;
 
-namespace SplashGames.Internal.UGPM
+namespace Solvex.Internal.UGPM
 {
     public class UGPMMainWindow : EditorWindow
     {

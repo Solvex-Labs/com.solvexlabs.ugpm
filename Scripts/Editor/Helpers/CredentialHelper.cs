@@ -1,7 +1,7 @@
 using System;
 using System.Diagnostics;
 
-namespace SplashGames.Internal.UGPM
+namespace Solvex.Internal.UGPM
 {
     internal class CredentialHelper
     {

@@ -7,7 +7,7 @@ using UnityEditor.PackageManager;
 using UnityEditor.PackageManager.Requests;
 using UnityEngine;
 
-namespace SplashGames.Internal.UGPM
+namespace Solvex.Internal.UGPM
 {
     public class PackageManagerService
     {

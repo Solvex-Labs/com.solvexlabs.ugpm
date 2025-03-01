@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
 
-namespace SplashGames.Internal.UGPM
+namespace Solvex.Internal.UGPM
 {
     public class IconCacheManager
     {

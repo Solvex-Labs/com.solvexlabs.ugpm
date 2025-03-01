@@ -5,7 +5,7 @@ using Newtonsoft.Json.Linq;
 using UnityEngine;
 using UnityEngine.Networking;
 
-namespace SplashGames.Internal.UGPM
+namespace Solvex.Internal.UGPM
 {
     public class GitHubProvider
     {
