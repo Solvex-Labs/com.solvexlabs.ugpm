@@ -343,7 +343,7 @@ namespace Solvex.Internal.UGPM
 
             GUILayout.Box("", GUILayout.ExpandWidth(true), GUILayout.Height(1));
             GUILayout.Label("Unity Dependencies:", EditorStyles.boldLabel);
-            EditorGUILayout.BeginHorizontal(); 
+            EditorGUILayout.BeginVertical(); 
             if (package.dependencies == null || package.dependencies.Count == 0)
             {
                 GUILayout.Label("No dependencies found.", EditorStyles.helpBox);
@@ -358,11 +358,11 @@ namespace Solvex.Internal.UGPM
                     EditorGUILayout.EndHorizontal();
                 }
             }
-            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.EndVertical();
 
             GUILayout.Box("", GUILayout.ExpandWidth(true), GUILayout.Height(1));
             GUILayout.Label("Third Party Dependencies:", EditorStyles.boldLabel);
-            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.BeginVertical();
             if (package.thirdPartyDependencies == null || package.thirdPartyDependencies.Count == 0)
             {
                 GUILayout.Label("No dependencies found.", EditorStyles.helpBox);
@@ -377,7 +377,7 @@ namespace Solvex.Internal.UGPM
                     EditorGUILayout.EndHorizontal();
                 }
             }
-            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.EndVertical();
 
             EditorGUILayout.EndVertical();
             GUILayout.EndScrollView();
