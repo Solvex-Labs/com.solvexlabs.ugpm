@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
@@ -113,6 +114,23 @@ namespace Solvex.Internal.UGPM
             catch (Exception ex)
             {
                 Debug.LogError($"Exception in FetchUserOrganizations: {ex.Message}");
+            }
+        }
+
+        public bool HasAccessToRepository(string gitURL)
+        {
+            try
+            {
+                using (var client = new HttpClient())
+                {
+                    var response = client.GetAsync(gitURL).Result;
+                    return response.IsSuccessStatusCode;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"Error checking repository access: {ex.Message}");
+                return false;
             }
         }
 

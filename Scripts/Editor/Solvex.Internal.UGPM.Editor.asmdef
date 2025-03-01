@@ -1,6 +1,6 @@
 {
-    "name": "SplashGames.Internal.UGPM.Editor",
-    "rootNamespace": "SplashGames.Internal.UGPM",
+    "name": "Solvex.Internal.UGPM.Editor",
+    "rootNamespace": "Solvex.Internal.UGPM",
     "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],

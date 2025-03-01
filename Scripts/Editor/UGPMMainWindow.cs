@@ -235,10 +235,8 @@ namespace Solvex.Internal.UGPM
         private void Import(string gitURL, PackageInfo info)
         {
             string path = $"{gitURL}#v{info.version}";
+
             List<string> dependencies = new List<string>();
-
-            //TODO add dependency validation before installing
-
             foreach (var dependency in info.dependencies)
             {
                 dependencies.Add($"{dependency.Key}@{dependency.Value}");
@@ -246,6 +244,14 @@ namespace Solvex.Internal.UGPM
 
             foreach (var thirdPartyDependency in info.thirdPartyDependencies)
             {
+                if (_gitHubProvider.HasAccessToRepository(thirdPartyDependency.Value) == false)
+                {
+                    Debug.LogError($"Package is not installed\n" +
+                        $"Failure install dependency for {info.displayName}\n" +
+                        $"Access is denied to dependency repository: {gitURL}");
+                    return;
+                }
+
                 dependencies.Add(thirdPartyDependency.Value);
             }
             dependencies.Add(path);
@@ -633,7 +639,7 @@ namespace Solvex.Internal.UGPM
             }
             catch (Exception ex)
             {
-                Debug.LogError($"Error parsing repository: {ex.Message}");
+                Debug.LogError($"Error parsing repository: {name}\n{ex.Message}");
                 return null;
             }
         }
