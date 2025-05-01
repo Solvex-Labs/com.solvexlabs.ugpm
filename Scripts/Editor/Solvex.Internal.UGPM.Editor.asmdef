@@ -2,7 +2,9 @@
     "name": "Solvex.Internal.UGPM.Editor",
     "rootNamespace": "Solvex.Internal.UGPM",
     "references": [],
-    "includePlatforms": [],
+    "includePlatforms": [
+        "Editor"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,
