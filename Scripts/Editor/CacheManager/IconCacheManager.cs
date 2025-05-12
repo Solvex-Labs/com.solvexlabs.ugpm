@@ -7,9 +7,9 @@ namespace Solvex.Internal.UGPM
 {
     public class IconCacheManager
     {
-        private static string CacheDirectory => Path.Combine(GetUnityPackageCachePath(), "package.splashgames.ugpm");
-        private static readonly string PlaceholderIconPath = "Packages/com.splashgames.ugpm/Resources/placeholderIcon.png";
-        private static readonly string AlternativePlaceholderPath = "Assets/com.splashgames.ugpm/Resources/placeholderIcon.png";
+        private static string CacheDirectory => Path.Combine(GetUnityPackageCachePath(), "package.solvexlabs.ugpm");
+        private static readonly string PlaceholderIconPath = "Packages/com.solvexlabs.ugpm/Resources/placeholderIcon.png";
+        private static readonly string AlternativePlaceholderPath = "Assets/com.solvexlabs.ugpm/Resources/placeholderIcon.png";
 
         public static async Task<Texture2D> GetIcon(string repoName, string iconUrl, string accessToken)
         {
