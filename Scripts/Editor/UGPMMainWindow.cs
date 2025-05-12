@@ -73,6 +73,12 @@ namespace Solvex.Internal.UGPM
             
             EditorGUILayout.BeginVertical(GUILayout.Width(leftPanelWidth));
 
+            if (_gitHubProvider == null)
+            {
+                Initialize();
+                return;
+            }
+
             if (_gitHubProvider.Sources.Count > 0 && _isLoading == false)
             {
                 GUILayout.Label("Sources:", EditorStyles.boldLabel);
@@ -105,13 +111,14 @@ namespace Solvex.Internal.UGPM
                 EditorGUI.ProgressBar(EditorGUILayout.GetControlRect(false, 20), progress, title);
             }
 
-            _repoScroll = EditorGUILayout.BeginScrollView(_repoScroll, GUILayout.Width(leftPanelWidth), GUILayout.Height(position.height - 50));
+            _repoScroll = EditorGUILayout.BeginScrollView(_repoScroll, GUILayout.Width(leftPanelWidth), GUILayout.Height(position.height));
 
             if (!_isLoading)
             {
                 DrawRepositoriesGrid(columnAmount, CardWidth);
             }
 
+            GUILayout.Space(100);
             EditorGUILayout.EndScrollView();
             EditorGUILayout.EndVertical();
 
@@ -528,7 +535,7 @@ namespace Solvex.Internal.UGPM
                         {
                             _repositories.Add(repo);
 
-                            await Task.Delay(50);
+                            await Task.Delay(20);
 
                             _loadedRepositories++;
                         }
